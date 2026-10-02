@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Детско кино – анимации на български</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Rubik:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1B2440; --ink2:#26325A; --ink3:#33416F;
+  --sun:#FFC93C; --sky:#7FC8F8; --rose:#FF7A90; --paper:#F7F9FC; --mute:#A9B4D6;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--ink);color:var(--paper);font-family:Rubik,system-ui,sans-serif;font-size:16px;line-height:1.5}
+button{font:inherit;cursor:pointer;border:0}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+h1,h2,h3{font-family:Comfortaa,Rubik,sans-serif;margin:0}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(27,36,64,.94);backdrop-filter:blur(8px);
+  display:flex;align-items:center;gap:16px;padding:12px clamp(12px,3vw,32px);flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-size:1.35rem;font-weight:700;color:var(--sun)}
+.logo svg{width:34px;height:34px}
+nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+nav button{background:transparent;color:var(--mute);padding:8px 14px;border-radius:999px;font-weight:500}
+nav button[aria-pressed="true"]{background:var(--ink3);color:var(--paper)}
+nav .count{font-size:.8em;opacity:.8;margin-left:4px}
+
+/* stage */
+#stage{display:none;position:fixed;inset:0;z-index:40;background:rgba(17,23,43,.98);overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(10px + env(safe-area-inset-top,0px)) clamp(12px,3vw,32px) calc(20px + env(safe-area-inset-bottom,0px))}
+#stage.on{display:block}
+.stagein{max-width:1100px;margin:0 auto}
+.stagetop{display:flex;justify-content:flex-end;margin-bottom:10px}
+.closeBtn{background:var(--ink3);color:var(--paper);padding:10px 16px;border-radius:999px;font-weight:500}
+.adminBtn{background:#E5484D;color:#fff;font-size:.75rem;font-weight:600;padding:5px 11px;border-radius:999px}
+body:not(.admin) .admin-only{display:none!important}
+dialog{border:0;border-radius:20px;background:var(--ink2);color:var(--paper);padding:24px;width:min(360px,90vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h2{font-size:1.2rem;margin-bottom:12px}
+dialog input{width:100%;padding:11px 13px;border-radius:12px;border:2px solid var(--ink3);background:var(--ink);color:var(--paper);font:inherit;margin-bottom:10px}
+.err{color:var(--rose);font-size:.9rem;min-height:1.4em;margin:0 0 8px}
+#frame{position:relative;background:#000;border-radius:22px;overflow:hidden;aspect-ratio:16/9;box-shadow:0 0 0 6px var(--ink2)}
+#frame:fullscreen{border-radius:0;box-shadow:none;aspect-ratio:auto;width:100vw;height:100vh}
+#yt{position:absolute;inset:0;width:100%;height:100%}
+#yt iframe{width:100%;height:100%;border:0}
+#clickcatch{position:absolute;inset:0 0 70px 0}
+.bar{position:absolute;left:0;right:0;bottom:0;padding:28px 14px 12px;
+  background:linear-gradient(transparent,rgba(0,0,0,.8));display:flex;flex-direction:column;gap:8px;transition:opacity .25s}
+#frame.idle .bar{opacity:0}
+#frame.idle{cursor:none}
+.row{display:flex;align-items:center;gap:8px}
+.cbtn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;flex:none}
+.cbtn:hover{background:rgba(255,255,255,.26)}
+.cbtn.big{width:52px;height:52px;background:var(--sun);color:var(--ink)}
+.cbtn svg{width:22px;height:22px;fill:currentColor}
+.time{font-variant-numeric:tabular-nums;font-size:.9rem;color:#fff;min-width:100px}
+.spacer{flex:1}
+input[type=range]{width:100%;accent-color:var(--sun);height:6px;cursor:pointer}
+.nowinfo{display:flex;gap:16px;align-items:flex-start;padding:16px 4px 0;flex-wrap:wrap}
+.nowinfo h2{font-size:1.3rem;line-height:1.35;flex:1 1 300px}
+.nowinfo p{color:var(--mute);margin:6px 0 0;white-space:pre-line;max-height:7.5em;overflow:auto;flex-basis:100%;font-size:.95rem}
+.qnote{font-size:.8rem;color:var(--mute)}
+
+/* grid */
+main{padding:16px clamp(12px,3vw,32px) 40px;max-width:1400px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
+.card{background:var(--ink2);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.card.playing{box-shadow:0 0 0 3px var(--sun)}
+.thumb{position:relative;aspect-ratio:16/9;background:var(--ink3);cursor:pointer;display:block;width:100%;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.dur{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.8);color:#fff;font-size:.8rem;padding:2px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
+.thumb .pl{position:absolute;inset:0;margin:auto;width:56px;height:56px;border-radius:50%;background:var(--sun);display:grid;place-items:center;opacity:0;transition:opacity .2s}
+.thumb:hover .pl,.thumb:focus-visible .pl{opacity:1}
+.thumb .pl svg{width:24px;height:24px;fill:var(--ink);margin-left:3px}
+.body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.body h3{font-size:1rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ch{font-size:.85rem;color:var(--sky)}
+.desc{font-size:.85rem;color:var(--mute);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:0}
+.acts{display:flex;gap:8px;margin-top:auto;padding-top:8px}
+.acts button{border-radius:12px;padding:8px 12px;font-weight:500;font-size:.9rem}
+.b-play{background:var(--sun);color:var(--ink);flex:1}
+.b-fav{background:var(--ink3);color:var(--paper)}
+.b-fav[aria-pressed="true"]{background:var(--rose);color:var(--ink)}
+.b-rm{background:transparent;color:var(--mute);border:1px solid var(--ink3)!important}
+.b-rm:hover{color:var(--rose)}
+
+#status{text-align:center;color:var(--mute);padding:28px 0 8px;min-height:60px}
+.loader{display:inline-block;width:22px;height:22px;border:3px solid var(--ink3);border-top-color:var(--sun);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.loader{animation-duration:3s}}
+
+/* setup */
+#setup{max-width:620px;margin:40px auto;background:var(--ink2);border-radius:22px;padding:28px}
+#setup h2{color:var(--sun);font-size:1.4rem;margin-bottom:10px}
+#setup ol{padding-left:20px;color:var(--mute)}
+#setup a{color:var(--sky)}
+#setup input{width:100%;padding:12px 14px;border-radius:12px;border:2px solid var(--ink3);background:var(--ink);color:var(--paper);font:inherit;margin:10px 0}
+.primary{background:var(--sun);color:var(--ink);padding:12px 20px;border-radius:12px;font-weight:600}
+.ghost{background:transparent;color:var(--mute);padding:8px 12px;border-radius:10px}
+.toggle{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:.9rem;margin-top:12px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--paper);color:var(--ink);padding:10px 18px;border-radius:999px;font-weight:500;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:600px){
+  .time{min-width:0;font-size:.8rem}
+  .cbtn{width:38px;height:38px}.cbtn.big{width:46px;height:46px}
+  .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="8" width="34" height="24" rx="8" fill="#FFC93C"/><path d="M17 14v12l10-6z" fill="#1B2440"/><circle cx="10" cy="5" r="2.5" fill="#7FC8F8"/><circle cx="31" cy="36" r="2" fill="#FF7A90"/></svg>
+    Детско кино
+  </div>
+  <nav aria-label="Изглед">
+    <button data-view="all" aria-pressed="true">Всички<span class="count" id="cAll"></span></button>
+    <button data-view="fav" aria-pressed="false">Любими<span class="count" id="cFav"></span></button>
+    <button data-view="rm" aria-pressed="false" class="admin-only">Премахнати<span class="count" id="cRm"></span></button>
+    <button id="settingsBtn" aria-label="Настройки" class="admin-only">⚙</button>
+  </nav>
+  <button class="adminBtn" id="adminBtn">Админ</button>
+</header>
+
+<section id="stage" aria-label="Плейър">
+ <div class="stagein">
+  <div class="stagetop"><button class="closeBtn" id="closeStage">✕ Затвори</button></div>
+  <div id="frame">
+    <div id="yt"></div>
+    <div id="clickcatch"></div>
+    <div class="bar">
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Превъртане">
+      <div class="row">
+        <button class="cbtn" id="prevBtn" aria-label="Предишен"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+        <button class="cbtn big" id="playBtn" aria-label="Пусни/Пауза"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="cbtn" id="nextBtn" aria-label="Следващ"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+        <button class="cbtn" id="back10" aria-label="Назад 10 секунди"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg></button>
+        <button class="cbtn" id="fwd10" aria-label="Напред 10 секунди"><svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/></svg></button>
+        <span class="time" id="time">0:00 / 0:00</span>
+        <span class="spacer"></span>
+        <button class="cbtn" id="fsBtn" aria-label="Цял екран"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="nowinfo">
+    <h2 id="nowTitle"></h2>
+    <button class="b-fav" id="nowFav" aria-pressed="false" style="border-radius:12px;padding:8px 14px">♥ Любими</button>
+    <p id="nowDesc"></p>
+  </div>
+ </div>
+</section>
+
+<dialog id="loginDlg">
+  <h2>Вход за администратор</h2>
+  <input id="lgUser" placeholder="Потребител" autocomplete="username">
+  <input id="lgPass" type="password" placeholder="Парола" autocomplete="current-password">
+  <p class="err" id="lgErr"></p>
+  <div style="display:flex;gap:10px">
+    <button class="primary" id="lgOk">Вход</button>
+    <button class="ghost" id="lgCancel">Отказ</button>
+  </div>
+</dialog>
+
+<div id="setup" hidden>
+  <h2>Нужен е безплатен ключ за YouTube</h2>
+  <p>Страницата търси клиповете в YouTube и ги пуска оттам, без да ги тегли. За търсенето YouTube изисква личен ключ – взима се за 2 минути и е безплатен.</p>
+  <ol>
+    <li>Отвори <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener">Google Cloud Console</a> и влез с Google профил.</li>
+    <li>Създай проект и натисни „Enable“ на YouTube Data API v3.</li>
+    <li>От „Credentials“ избери „Create credentials → API key“ и го копирай.</li>
+  </ol>
+  <input id="keyInput" placeholder="Постави ключа тук (AIza…)" autocomplete="off">
+  <label class="toggle"><input type="checkbox" id="strictChk" checked> Само клипове, за които има явен знак, че са на български (бг аудио, дублаж и т.н.)</label>
+  <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+    <button class="primary" id="saveKey">Запази и започни</button>
+    <button class="ghost" id="clearCache">Изчисти намерените клипове</button>
+  </div>
+</div>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <div id="status"></div>
+  <div id="sentinel" style="height:1px"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- storage ---------- */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d }catch(e){ return d } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} }
+};
+let apiKey  = LS.get('dk_key', '') || 'AIzaSyDLPrc438DoXguHUMZ8U71yOfMbiN2xePY';
+let strict  = LS.get('dk_strict', true);
+let removed = new Set(LS.get('dk_removed', []));          // id-та, които никога не се показват
+let removedInfo = LS.get('dk_removedInfo', {});           // за изгледа „Премахнати“
+let favs    = LS.get('dk_favs', {});                      // id -> видео
+let videos  = LS.get('dk_cache', []);                     // намерени досега
+let queryState = LS.get('dk_qstate', {});                 // pageToken за всяко търсене
+
+const seenIds = new Set(videos.map(v => v.id));
+const seenTitles = new Set(videos.map(v => normTitle(v.title)));
+videos = videos.filter(v => !removed.has(v.id));
+
+/* ---------- търсения ---------- */
+const QUERIES = [
+  'анимационен филм бг аудио', 'анимация за деца бг аудио', 'детски филмчета на български',
+  'анимационни филми на български език', 'бг аудио анимация цял филм', 'приказки за деца на български анимация',
+  'анимационен сериал бг аудио', 'детски анимационни епизоди на български', 'анимационни филми бг дублаж',
+  'филмчета за деца бг аудио', 'анимирани приказки български дублаж', 'детски сериал на български цели епизоди',
+  'анимационен филм с бг аудио пълен', 'бг аудио детски филм', 'анимации на български за малки деца',
+  'български дублаж анимация', 'детско филмче български език', 'анимационни приказки на български'
+];
+const BG_RE  = /бг\.?\s*(аудио|дублаж|озвучаване|звук)|на български|български (език|дублаж|аудио|озвучаване)|с български|bg\s*audio|bg\s*dub|bulgarian/i;
+const KID_RE = /анимац|анимир|детск|деца|дете|приказ|филмче|cartoon|animation|animated|kids|children/i;
+
+let qIndex = LS.get('dk_qindex', 0);
+let loading = false, exhaustedRounds = 0;
+
+function normTitle(t){ return (t||'').toLowerCase().replace(/[^a-zа-я0-9]/gi,'').slice(0,60) }
+function parseDur(iso){
+  const m = /P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso||''); if(!m) return 0;
+  return (+m[1]||0)*86400 + (+m[2]||0)*3600 + (+m[3]||0)*60 + (+m[4]||0);
+}
+function fmt(s){ s = Math.max(0, Math.floor(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60;
+  return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(x).padStart(2,'0') }
+function decode(s){ const t = document.createElement('textarea'); t.innerHTML = s; return t.value }
+
+async function api(path, params){
+  const u = new URL('https://www.googleapis.com/youtube/v3/' + path);
+  Object.entries({...params, key: apiKey}).forEach(([k,v]) => v !== undefined && u.searchParams.set(k, v));
+  let r;
+  try{ r = await fetch(u.toString()) }
+  catch(e){ throw new Error('Няма връзка с YouTube. Отвори файла директно в Chrome, а не в прегледа на чата.') }
+  const j = await r.json();
+  if(j.error) throw new Error(j.error.message || 'Грешка от YouTube');
+  return j;
+}
+
+async function fetchMore(){
+  if(loading || !apiKey) return;
+  loading = true; setStatus('<span class="loader"></span>Търся нови клипове…');
+  let added = 0, tries = 0;
+  try{
+    while(added < 8 && tries < 4){
+      tries++;
+      const q = QUERIES[qIndex % QUERIES.length];
+      const st = queryState[q] || {};
+      if(st.done){ qIndex++; if(qIndex % QUERIES.length === 0){ exhaustedRounds++; if(exhaustedRounds > 1){ queryState = {}; } } continue; }
+      const s = await api('search', {
+        part:'snippet', q, type:'video', maxResults:50, videoEmbeddable:'true', safeSearch:'strict',
+        relevanceLanguage:'bg', regionCode:'BG', pageToken: st.token
+      });
+      queryState[q] = { token: s.nextPageToken, done: !s.nextPageToken };
+      qIndex++;
+      const ids = s.items.map(i => i.id.videoId).filter(id => id && !seenIds.has(id) && !removed.has(id));
+      if(!ids.length) continue;
+      const d = await api('videos', { part:'snippet,contentDetails,status', id: ids.join(',') });
+      for(const v of d.items){
+        const dur = parseDur(v.contentDetails.duration);
+        const sn = v.snippet, title = decode(sn.title), desc = sn.description || '';
+        const text = title + ' ' + desc + ' ' + (sn.tags||[]).join(' ');
+        seenIds.add(v.id);
+        if(dur < 120) continue;                                   // поне 2 минути
+        if(sn.liveBroadcastContent && sn.liveBroadcastContent !== 'none') continue;
+        if(v.status && v.status.embeddable === false) continue;
+        const isBg = (sn.defaultAudioLanguage||'').startsWith('bg') || BG_RE.test(text);
+        if(strict ? !isBg : !/[а-я]/i.test(title)) continue;
+        if(!(KID_RE.test(text) || (v.status && v.status.madeForKids))) continue;
+        const nt = normTitle(title);
+        if(seenTitles.has(nt)) continue;                          // повтарящо се заглавие
+        seenTitles.add(nt);
+        const th = sn.thumbnails || {};
+        const item = { id:v.id, title, desc, channel:sn.channelTitle, dur,
+          thumb:(th.maxres||th.standard||th.high||th.medium||th.default||{}).url };
+        videos.push(item); added++;
+        if(view === 'all') grid.appendChild(card(item));
+      }
+    }
+    LS.set('dk_cache', videos.slice(-800)); LS.set('dk_qstate', queryState); LS.set('dk_qindex', qIndex);
+    setStatus(added ? '' : 'Превърти още надолу за още търсене.');
+  }catch(e){
+    setStatus('YouTube върна грешка: ' + e.message + (/quota/i.test(e.message) ? ' Дневният лимит за търсене е изчерпан – опитай утре.' : ''));
+  }
+  loading = false; counts();
+}
+
+/* ---------- списък ---------- */
+const grid = document.getElementById('grid');
+let view = 'all';
+function currentList(){
+  if(view === 'fav') return Object.values(favs);
+  if(view === 'rm') return Object.values(removedInfo);
+  return videos.filter(v => !removed.has(v.id));
+}
+function card(v){
+  const el = document.createElement('article'); el.className = 'card'; el.dataset.id = v.id;
+  if(v.id === nowId) el.classList.add('playing');
+  const isFav = !!favs[v.id];
+  el.innerHTML = `
+    <button class="thumb" aria-label="Пусни ${esc(v.title)}">
+      <img loading="lazy" alt="" src="${esc(v.thumb||'')}" onerror="this.src='https://i.ytimg.com/vi/${v.id}/hqdefault.jpg'">
+      <span class="dur">${fmt(v.dur)}</span><span class="pl"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+    </button>
+    <div class="body">
+      <h3>${esc(v.title)}</h3>
+      <div class="ch">${esc(v.channel||'')}</div>
+      <p class="desc">${esc((v.desc||'').slice(0,240)) || 'Няма описание.'}</p>
+      <div class="acts">
+        ${view === 'rm'
+          ? `<button class="b-play b-restore">Върни в списъка</button>`
+          : `<button class="b-play">▶ Пусни</button>
+             <button class="b-fav" aria-pressed="${isFav}" aria-label="Любими">${isFav ? '♥' : '♡'}</button>
+             ${isAdmin ? `<button class="b-rm" aria-label="Премахни">✕ Премахни</button>` : ''}`}
+      </div>
+    </div>`;
+  el.querySelector('.thumb').onclick = () => view !== 'rm' && play(v.id);
+  if(view === 'rm'){
+    el.querySelector('.b-restore').onclick = () => { removed.delete(v.id); delete removedInfo[v.id]; saveRemoved();
+      if(!videos.find(x => x.id === v.id)) videos.unshift(v); el.remove(); toast('Върнат в списъка'); counts(); };
+  } else {
+    el.querySelector('.b-play').onclick = () => play(v.id);
+    el.querySelector('.b-fav').onclick = e => toggleFav(v, e.currentTarget);
+    const rm = el.querySelector('.b-rm'); if(rm) rm.onclick = () => removeVid(v, el);
+  }
+  return el;
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+function render(){
+  grid.innerHTML = '';
+  const list = currentList();
+  list.forEach(v => grid.appendChild(card(v)));
+  if(!list.length) setStatus(view === 'fav' ? 'Още няма любими. Натисни ♡ на някой клип, за да го добавиш.'
+    : view === 'rm' ? 'Няма премахнати клипове.' : '');
+  else setStatus('');
+  counts();
+  if(view === 'all' && list.length < 12) fetchMore();
+}
+function counts(){
+  document.getElementById('cAll').textContent = videos.filter(v => !removed.has(v.id)).length || '';
+  document.getElementById('cFav').textContent = Object.keys(favs).length || '';
+  document.getElementById('cRm').textContent = removed.size || '';
+}
+function setStatus(h){ document.getElementById('status').innerHTML = h }
+function toggleFav(v, btn){
+  if(favs[v.id]){ delete favs[v.id]; toast('Махнат от любими') }
+  else { favs[v.id] = v; toast('Добавен в любими') }
+  LS.set('dk_favs', favs);
+  document.querySelectorAll(`.card[data-id="${v.id}"] .b-fav`).forEach(b => { b.setAttribute('aria-pressed', !!favs[v.id]); b.textContent = favs[v.id] ? '♥' : '♡' });
+  if(v.id === nowId) syncNowFav();
+  if(view === 'fav' && !favs[v.id]) btn.closest('.card').remove();
+  counts();
+}
+function saveRemoved(){ LS.set('dk_removed', [...removed]); LS.set('dk_removedInfo', removedInfo) }
+function removeVid(v, el){
+  removed.add(v.id); removedInfo[v.id] = v; saveRemoved();
+  if(favs[v.id]){ delete favs[v.id]; LS.set('dk_favs', favs) }
+  videos = videos.filter(x => x.id !== v.id); LS.set('dk_cache', videos);
+  el.remove(); toast('Премахнат – няма да се появи отново'); counts();
+  if(v.id === nowId) next();
+}
+
+/* ---------- плейър ---------- */
+let player = null, ytReady = false, nowId = null, playList = [], pendingId = null;
+const frame = document.getElementById('frame');
+window.onYouTubeIframeAPIReady = () => { ytReady = true; if(pendingId) play(pendingId) };
+(function(){ const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s) })();
+
+function play(id){
+  playList = currentList().map(v => v.id);
+  nowId = id;
+  const v = currentList().find(x => x.id === id) || favs[id] || videos.find(x => x.id === id);
+  document.getElementById('stage').classList.add('on');
+  document.getElementById('nowTitle').textContent = v ? v.title : '';
+  document.getElementById('nowDesc').textContent = v ? v.desc : '';
+  syncNowFav();
+  document.querySelectorAll('.card.playing').forEach(c => c.classList.remove('playing'));
+  document.querySelectorAll(`.card[data-id="${id}"]`).forEach(c => c.classList.add('playing'));
+  if(!ytReady){ pendingId = id; return }
+  if(!player){
+    player = new YT.Player('yt', {
+      videoId: id,
+      host: 'https://www.youtube.com',
+      playerVars: Object.assign({ autoplay:1, controls:0, rel:0, modestbranding:1, playsinline:1, iv_load_policy:3, fs:0, hl:'bg', vq:'hd2160' },
+        /^https?:$/.test(location.protocol) ? { origin: location.origin, widget_referrer: location.href } : {}),
+      events: {
+        onReady: e => { maxQuality(); e.target.playVideo() },
+        onStateChange: e => { if(e.data === YT.PlayerState.ENDED) next(); if(e.data === YT.PlayerState.PLAYING) maxQuality(); setIcon() },
+        onError: e => {
+          if(e.data === 153 || !/^https?:$/.test(location.protocol)){
+            toast('YouTube не пуска видео в локален файл – качи страницата на https адрес');
+            return;
+          }
+          toast('Клипът не може да се пусне тук – минавам на следващия'); setTimeout(next, 800);
+        }
+      }
+    });
+  } else { player.loadVideoById({ videoId: id, suggestedQuality: 'highres' }); }
+}
+function maxQuality(){
+  try{
+    const levels = player.getAvailableQualityLevels();
+    const best = levels && levels.length ? levels[0] : 'highres';
+    player.setPlaybackQuality(best);
+  }catch(e){}
+}
+function next(){ step(1) }
+function prev(){ step(-1) }
+function step(d){
+  if(!playList.length) playList = currentList().map(v => v.id);
+  let i = playList.indexOf(nowId) + d;
+  while(i >= 0 && i < playList.length && removed.has(playList[i])) i += d;
+  if(i >= playList.length){ if(view === 'all'){ fetchMore().then(() => { playList = currentList().map(v => v.id); const j = playList.indexOf(nowId) + 1; if(playList[j]) play(playList[j]) }) } return }
+  if(i < 0) return;
+  play(playList[i]);
+}
+function syncNowFav(){ const b = document.getElementById('nowFav'); const f = !!favs[nowId]; b.setAttribute('aria-pressed', f); b.textContent = f ? '♥ В любими' : '♡ Добави в любими' }
+document.getElementById('nowFav').onclick = e => { const v = currentList().find(x => x.id === nowId) || favs[nowId] || videos.find(x => x.id === nowId); if(v) toggleFav(v, e.currentTarget) };
+
+function togglePlay(){ if(!player) return; player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo() }
+function setIcon(){
+  const playing = player && player.getPlayerState() === 1;
+  document.getElementById('playIcon').innerHTML = playing ? '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>' : '<path d="M8 5v14l11-7z"/>';
+}
+document.getElementById('playBtn').onclick = togglePlay;
+document.getElementById('clickcatch').onclick = togglePlay;
+document.getElementById('nextBtn').onclick = next;
+document.getElementById('prevBtn').onclick = prev;
+document.getElementById('back10').onclick = () => player && player.seekTo(player.getCurrentTime() - 10, true);
+document.getElementById('fwd10').onclick  = () => player && player.seekTo(player.getCurrentTime() + 10, true);
+const seek = document.getElementById('seek'); let dragging = false;
+seek.oninput = () => { dragging = true; if(player) document.getElementById('time').textContent = fmt(seek.value/1000*player.getDuration()) + ' / ' + fmt(player.getDuration()) };
+seek.onchange = () => { if(player) player.seekTo(seek.value/1000*player.getDuration(), true); dragging = false };
+setInterval(() => {
+  if(!player || !player.getDuration) return;
+  const d = player.getDuration() || 0, c = player.getCurrentTime() || 0;
+  if(!dragging){ seek.value = d ? c/d*1000 : 0; document.getElementById('time').textContent = fmt(c) + ' / ' + fmt(d) }
+}, 400);
+
+function fullscreen(){
+  if(document.fullscreenElement || document.webkitFullscreenElement){ (document.exitFullscreen || document.webkitExitFullscreen).call(document) }
+  else { const r = frame.requestFullscreen || frame.webkitRequestFullscreen; if(r) r.call(frame); else if(player) { const f = player.getIframe(); (f.webkitEnterFullscreen||f.requestFullscreen||(()=>{})).call(f) } }
+  setTimeout(maxQuality, 600);
+}
+document.getElementById('fsBtn').onclick = fullscreen;
+frame.ondblclick = fullscreen;
+
+let idleT; function wake(){ frame.classList.remove('idle'); clearTimeout(idleT); idleT = setTimeout(() => player && player.getPlayerState() === 1 && frame.classList.add('idle'), 2500) }
+frame.addEventListener('mousemove', wake); frame.addEventListener('touchstart', wake, {passive:true});
+
+document.addEventListener('keydown', e => {
+  if(!player || e.target.tagName === 'INPUT') return;
+  if(e.code === 'Space'){ e.preventDefault(); togglePlay() }
+  else if(e.key === 'ArrowRight') player.seekTo(player.getCurrentTime() + 10, true);
+  else if(e.key === 'ArrowLeft') player.seekTo(player.getCurrentTime() - 10, true);
+  else if(e.key === 'f' || e.key === 'ф') fullscreen();
+  else if(e.key === 'n' || e.key === 'н') next();
+  else if(e.key === 'p' || e.key === 'п') prev();
+});
+
+/* ---------- навигация и настройки ---------- */
+document.querySelectorAll('nav button[data-view]').forEach(b => b.onclick = () => {
+  view = b.dataset.view;
+  document.querySelectorAll('nav button[data-view]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  render();
+});
+const setup = document.getElementById('setup');
+document.getElementById('settingsBtn').onclick = () => { setup.hidden = !setup.hidden; document.getElementById('keyInput').value = apiKey; document.getElementById('strictChk').checked = strict };
+document.getElementById('saveKey').onclick = () => {
+  apiKey = document.getElementById('keyInput').value.trim(); strict = document.getElementById('strictChk').checked;
+  LS.set('dk_key', apiKey); LS.set('dk_strict', strict);
+  if(!apiKey){ toast('Постави ключа, за да започне търсенето'); return }
+  setup.hidden = true; render(); fetchMore();
+};
+document.getElementById('clearCache').onclick = () => {
+  videos = []; seenIds.clear(); seenTitles.clear(); queryState = {}; qIndex = 0;
+  LS.set('dk_cache', []); LS.set('dk_qstate', {}); LS.set('dk_qindex', 0);
+  toast('Списъкът е изчистен (любими и премахнати остават)'); render();
+};
+
+let tT; function toast(m){ const t = document.getElementById('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => t.classList.remove('on'), 2200) }
+
+new IntersectionObserver(es => { if(es[0].isIntersecting && view === 'all') fetchMore() }, { rootMargin: '800px' })
+  .observe(document.getElementById('sentinel'));
+
+/* ---------- затваряне на плейъра (списъкът си остава на същото място) ---------- */
+function closeStage(){
+  if(player && player.pauseVideo) player.pauseVideo();
+  if(document.fullscreenElement) document.exitFullscreen();
+  document.getElementById('stage').classList.remove('on');
+}
+document.getElementById('closeStage').onclick = closeStage;
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && document.getElementById('stage').classList.contains('on') && !document.fullscreenElement) closeStage() });
+
+/* ---------- админ ---------- */
+const ADMIN_HASH = 'ff178af85aa5137d532fb36ca57da9f59cd5559475f1dd21ce9aaaf64a304b12';
+let isAdmin = LS.get('dk_admin', '') === ADMIN_HASH;
+async function sha(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+function applyAdmin(){
+  document.body.classList.toggle('admin', isAdmin);
+  document.getElementById('adminBtn').textContent = isAdmin ? 'Изход от админ' : 'Админ';
+  if(!isAdmin){
+    setup.hidden = true;
+    if(view === 'rm'){ view = 'all'; document.querySelectorAll('nav button[data-view]').forEach(x => x.setAttribute('aria-pressed', x.dataset.view === 'all')) }
+  }
+  const y = window.scrollY; render(); window.scrollTo(0, y);
+}
+const dlg = document.getElementById('loginDlg');
+document.getElementById('adminBtn').onclick = () => {
+  if(isAdmin){ isAdmin = false; LS.set('dk_admin', ''); applyAdmin(); toast('Излезе от админ режима'); return }
+  document.getElementById('lgErr').textContent = ''; document.getElementById('lgPass').value = '';
+  dlg.showModal(); document.getElementById('lgUser').focus();
+};
+document.getElementById('lgCancel').onclick = () => dlg.close();
+async function tryLogin(){
+  const h = await sha(document.getElementById('lgUser').value.trim() + ':' + document.getElementById('lgPass').value);
+  if(h === ADMIN_HASH){ isAdmin = true; LS.set('dk_admin', h); dlg.close(); applyAdmin(); toast('Влезе като админ') }
+  else document.getElementById('lgErr').textContent = 'Грешен потребител или парола.';
+}
+document.getElementById('lgOk').onclick = tryLogin;
+document.getElementById('lgPass').addEventListener('keydown', e => { if(e.key === 'Enter') tryLogin() });
+
+document.body.classList.toggle('admin', isAdmin);
+document.getElementById('adminBtn').textContent = isAdmin ? 'Изход от админ' : 'Админ';
+render();
+</script>
+</body>
+</html>
